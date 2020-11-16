@@ -47,7 +47,35 @@
 # 链接：https://leetcode-cn.com/problems/string-to-integer-atoi
 # 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
 
+# 法1
+# 直接遍历法
+class Solution:
+    def myAtoi(self, str: str) -> int:
+        INT_MAX = 2 ** 31 - 1
+        INT_MIN = -2 ** 31
+        res = 0
+        i = 0
+        positive = True
+        # 1.跳过前面的空格
+        while s[i] == ' ':
+            i += 1
+        # 2.判断正负号
+        if s[i] == '-':
+            positive = False
+        if s[i] == '+' or s[i] == '-':
+            i += 1
+        # 3.读取有效数字
+        while i < len(s) and s[i].isdigit():
+            r = int(s[i])
+            # 判断是否正数溢出，INT_MAX逆运算，INT_MIN也适用
+            if (res > INT_MAX//10) or (res == INT_MAX//10 and r>7):
+                return INT_MAX if positive else INT_MIN
+            # 数字推入：左移历史数据 + 当前数字
+            res = res * 10 + r
+            i += 1
+        return res if positive else -res
 
+# 法2
 # https://leetcode-cn.com/problems/string-to-integer-atoi/solution/zi-fu-chuan-zhuan-huan-zheng-shu-atoi-by-leetcode-/
 # 自动机
 # 确定有限状态机（deterministic finite automaton, DFA）
@@ -56,29 +84,39 @@ INT_MIN = -2 ** 31
 
 class Automaton:
     def __init__(self):
+        # 初始状态
         self.state = 'start'
+        # 有限状态机的表
+        self.table = {
+            #            ' '        '+/-'    'digit'      'other'
+            'start':     ['start', 'signed', 'in_number', 'end'],
+            'signed':    ['end',   'end',    'in_number', 'end'],
+            'in_number': ['end',   'end',    'in_number', 'end'],
+            'end':       ['end',   'end',    'end',       'end'],
+        }
+        # 有限状态机维护的数据
         self.sign = 1
         self.ans = 0
-        self.table = {
-            'start': ['start', 'signed', 'in_number', 'end'],
-            'signed': ['end', 'end', 'in_number', 'end'],
-            'in_number': ['end', 'end', 'in_number', 'end'],
-            'end': ['end', 'end', 'end', 'end'],
-        }
         
-    def get_col(self, c):
+    def condition_idx(self, c):
+        # 根据条件返回对应列索引
         if c.isspace():
             return 0
-        if c == '+' or c == '-':
+        elif c == '+' or c == '-':
             return 1
-        if c.isdigit():
+        elif c.isdigit():
             return 2
-        return 3
+        else:
+            return 3
 
     def get(self, c):
-        self.state = self.table[self.state][self.get_col(c)]
+        # 更新状态 <- 当前状态 和 当前条件
+        self.state = self.table[self.state][self.condition_idx(c)]
+        # 根据最新状态，维护数据
         if self.state == 'in_number':
+            # 推入数字
             self.ans = self.ans * 10 + int(c)
+            # 溢出处理
             self.ans = min(self.ans, INT_MAX) if self.sign == 1 else min(self.ans, -INT_MIN)
         elif self.state == 'signed':
             self.sign = 1 if c == '+' else -1
